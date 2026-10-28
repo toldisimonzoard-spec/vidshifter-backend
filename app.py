@@ -1,3 +1,4 @@
+
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import os
@@ -10,6 +11,13 @@ CORS(app)
 
 DOWNLOAD_FOLDER = '/tmp'
 os.makedirs(DOWNLOAD_FOLDER, exist_ok=True)
+
+# Sütik kezelése, ha beállítottuk a Renderen
+cookies_content = os.environ.get('YOUTUBE_COOKIES')
+cookies_path = os.path.join(DOWNLOAD_FOLDER, 'cookies.txt')
+if cookies_content:
+    with open(cookies_path, 'w', encoding='utf-8') as f:
+        f.write(cookies_content)
 
 @app.route('/')
 def home():
@@ -30,14 +38,17 @@ def process_video():
     print(f"Feldolgozás indítása: {video_url} (Nyelv: {target_lang})")
 
     try:
-        # Frissített, szigorúbb yt-dlp opciók a letöltési hiba elkerülésére
         ydl_opts = {
             'format': 'best[height<=720]',
             'outtmpl': os.path.join(DOWNLOAD_FOLDER, 'downloaded_video.mp4'),
-            'extractor_args': {'youtube': {'player_client': ['ios', 'web']}},
+            'extractor_args': {'youtube': {'player_client': ['android', 'web']}},
             'no_warnings': True,
             'quiet': True
         }
+        
+        # Ha létezik süti fájl, használjuk a letöltéshez
+        if os.path.exists(cookies_path) and os.path.getsize(cookies_path) > 0:
+            ydl_opts['cookiefile'] = cookies_path
 
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             ydl.download([video_url])
