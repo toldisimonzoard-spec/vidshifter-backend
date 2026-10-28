@@ -6,7 +6,6 @@ import yt_dlp
 app = Flask(__name__)
 CORS(app)
 
-# Ideiglenes mappa a letöltött videók számára
 DOWNLOAD_FOLDER = '/tmp'
 os.makedirs(DOWNLOAD_FOLDER, exist_ok=True)
 
@@ -29,24 +28,28 @@ def process_video():
     print(f"Feldolgozás indítása: {video_url} (Nyelv: {target_lang})")
 
     try:
-        # yt-dlp beállítások a videó letöltéséhez
+        # yt-dlp beállítások: videó letöltése ÉS hang kinyerése MP3-ként
         ydl_opts = {
             'format': 'mp4',
             'outtmpl': os.path.join(DOWNLOAD_FOLDER, 'downloaded_video.mp4'),
+            'postprocessors': [{
+                'key': 'FFmpegExtractAudio',
+                'preferredcodec': 'mp3',
+                'preferredquality': '192',
+            }],
             'quiet': True
         }
 
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             ydl.download([video_url])
 
-        print("A videó sikeresen letöltve a szerverre!")
+        print("A videó letöltése és a hang sikeresen kinyerve a szerveren!")
 
-        # Itt történik majd a hang kinyerése, az OpenAI/Whisper átírás, 
-        # a fordítás és a TTS (szinkronhang generálás)
+        # Itt fogjuk majd meghívni az AI fordítót és szöveg-felolvasót (TTS)
 
         return jsonify({
             'success': True,
-            'message': 'A videó letöltése és AI előkészítése sikeresen megtörtént!',
+            'message': 'A hang sikeresen kinyerve a videóból!',
             'url': video_url
         })
 
