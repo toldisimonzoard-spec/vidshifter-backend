@@ -30,13 +30,12 @@ def process_video():
     print(f"Feldolgozás indítása: {video_url} (Nyelv: {target_lang})")
 
     try:
-        # yt-dlp beállítások YouTube bot-védelem kikerülésére
+        # Frissített, szigorúbb yt-dlp opciók a letöltési hiba elkerülésére
         ydl_opts = {
-            'format': 'mp4',
+            'format': 'best[height<=720]',
             'outtmpl': os.path.join(DOWNLOAD_FOLDER, 'downloaded_video.mp4'),
-            'geo_bypass': True,
-            'nocheckcertificate': True,
-            'extractor_args': {'youtube': {'player_client': ['android', 'web']}},
+            'extractor_args': {'youtube': {'player_client': ['ios', 'web']}},
+            'no_warnings': True,
             'quiet': True
         }
 
