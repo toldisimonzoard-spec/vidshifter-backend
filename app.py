@@ -1,4 +1,3 @@
-
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import os
@@ -38,8 +37,9 @@ def process_video():
     print(f"Feldolgozás indítása: {video_url} (Nyelv: {target_lang})")
 
     try:
-        # Rugalmasabb yt-dlp opciók, amik kezelik a Shorts videókat is
+        # Stabil letöltési opciók Shorts és normál videókhoz is
         ydl_opts = {
+            'format': 'best',
             'outtmpl': os.path.join(DOWNLOAD_FOLDER, 'downloaded_video.mp4'),
             'no_warnings': True,
             'quiet': True
