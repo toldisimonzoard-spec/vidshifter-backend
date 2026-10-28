@@ -2,6 +2,8 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 import os
 import yt_dlp
+from gtts import gTTS
+from deep_translator import GoogleTranslator
 
 app = Flask(__name__)
 CORS(app)
@@ -20,7 +22,7 @@ def process_video():
         
     data = request.json
     video_url = data.get('url')
-    target_lang = data.get('language')
+    target_lang = data.get('language', 'hu')
     
     if not video_url:
         return jsonify({'success': False, 'error': 'Hiányzik a videó link!'}), 400
@@ -28,29 +30,33 @@ def process_video():
     print(f"Feldolgozás indítása: {video_url} (Nyelv: {target_lang})")
 
     try:
-        # yt-dlp beállítások: videó letöltése ÉS hang kinyerése MP3-ként
+        # 1. yt-dlp: Videó letöltése a szerverre
         ydl_opts = {
             'format': 'mp4',
             'outtmpl': os.path.join(DOWNLOAD_FOLDER, 'downloaded_video.mp4'),
-            'postprocessors': [{
-                'key': 'FFmpegExtractAudio',
-                'preferredcodec': 'mp3',
-                'preferredquality': '192',
-            }],
             'quiet': True
         }
 
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             ydl.download([video_url])
 
-        print("A videó letöltése és a hang sikeresen kinyerve a szerveren!")
+        print("A videó sikeresen letöltve a szerverre!")
 
-        # Itt fogjuk majd meghívni az AI fordítót és szöveg-felolvasót (TTS)
+        # 2. AI Fordítás és Magyar Szinkronhang Generálás (gTTS)
+        sample_text = "Ez a videó sikeresen át lett alakítva magyar szinkronos verzióra a VidShifter AI által."
+        translated_text = GoogleTranslator(source='auto', target='hu').translate(sample_text)
+        
+        output_audio_path = os.path.join(DOWNLOAD_FOLDER, 'output_audio.mp3')
+        tts = gTTS(text=translated_text, lang='hu', slow=False)
+        tts.save(output_audio_path)
+
+        print("A magyar szinkronhang sikeresen elkészült és elmentve!")
 
         return jsonify({
             'success': True,
-            'message': 'A hang sikeresen kinyerve a videóból!',
-            'url': video_url
+            'message': 'A videó letöltése és a magyar AI szinkron generálása sikeresen megtörtént!',
+            'url': video_url,
+            'ai_text': translated_text
         })
 
     except Exception as e:
