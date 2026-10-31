@@ -1,7 +1,6 @@
-
 flask
 flask-cors
 yt-dlp
 gTTS
 deep-translator
-openai-whisper
+requests
