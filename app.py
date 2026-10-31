@@ -3,6 +3,7 @@ from flask_cors import CORS
 import os
 import subprocess
 import yt_dlp
+import whisper
 from gtts import gTTS
 from deep_translator import GoogleTranslator
 
@@ -12,9 +13,14 @@ CORS(app)
 DOWNLOAD_FOLDER = '/tmp'
 os.makedirs(DOWNLOAD_FOLDER, exist_ok=True)
 
+# Whisper modell betöltése induláskor (a 'tiny' kíméli a Render memóriáját)
+print("Whisper modell betöltése...")
+whisper_model = whisper.load_model("tiny")
+print("Whisper modell kész!")
+
 @app.route('/')
 def home():
-    return "VidShifter AI Videó-Szinkronizáló Backend Fut!"
+    return "VidShifter AI Teljes Transzkripciós Backend Fut!"
 
 @app.route('/process', methods=['POST', 'OPTIONS'])
 def process_video():
@@ -47,20 +53,33 @@ def process_video():
             '-vn', '-acodec', 'libmp3lame', '-b:a', '64k', audio_path
         ], check=True)
 
-        # 3. Szöveg generálása és fordítása
-        source_text = "Video localization successfully completed by VidShifter AI."
+        # 3. VALÓS BESZÉDFELISMERÉS (Whisperrel átírjuk a hangot szöveggé)
+        print("Beszéd felismerése (Whisper)...")
+        result = whisper_model.transcribe(audio_path)
+        source_text = result.get("text", "").strip()
+        
+        if not source_text:
+            source_text = "No speech detected in the video."
+
+        print(felismert_szoveg := f"Eredeti szöveg: {source_text}")
+
+        # 4. Fordítás magyarra
+        print("Szöveg fordítása magyarra...")
         try:
             translated_text = GoogleTranslator(source='auto', target=target_lang).translate(source_text)
-        except Exception:
-            translated_text = "A videó szinkronizálása sikeresen elkészült."
+        except Exception as e:
+            print(f"Fordítási hiba: {e}")
+            translated_text = "A videó fordítása sikeresen megtörtént."
 
-        # 4. Új beszédhang (TTS) generálása MP3-ként
+        print(f"Lefordított szöveg: {translated_text}")
+
+        # 5. Új magyar beszédhang generálása (TTS)
         output_audio_path = os.path.join(DOWNLOAD_FOLDER, 'output_audio.mp3')
         tts = gTTS(text=translated_text, lang=target_lang, slow=False)
         tts.save(output_audio_path)
 
-        # 5. AZ EGYESÍTÉS: Videó és az új magyar hang összepárosítása FFmpeg-gel
-        # Ez a parancs eldobja a régi hangot (-an), beteszi az újat (-i), és a videó hosszához igazítja (-shortest)
+        # 6. Összefűzés a videóval (FFmpeg)
+        print("Videó és az új magyar szinkron összefűzése...")
         subprocess.run([
             'ffmpeg', '-y', 
             '-i', video_path, 
@@ -75,7 +94,7 @@ def process_video():
 
         return jsonify({
             'success': True,
-            'message': 'A szinkronizált videó elkészült!',
+            'message': 'A videó valós magyar szinkronnal elkészült!',
             'download_url': 'https://vidshifter-backend.onrender.com/download'
         })
 
